@@ -1,0 +1,216 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Solar System</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+        .info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="info" id="info"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        // Set up the scene, camera, and renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Add OrbitControls for 3D view
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.25;
+        controls.enableZoom = true;
+
+        // Create the Sun
+        const sunGeometry = new THREE.SphereGeometry(5, 32, 32);
+        const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+        const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+        scene.add(sun);
+
+        // Create orbits
+        const createOrbit = (radius) => {
+            const orbitGeometry = new THREE.RingGeometry(radius - 0.1, radius + 0.1, 64);
+            const orbitMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+            const orbit = new THREE.Mesh(orbitGeometry, orbitMaterial);
+            orbit.rotation.x = Math.PI / 2;
+            return orbit;
+        };
+
+        const mercuryOrbit = createOrbit(10);
+        const venusOrbit = createOrbit(15);
+        const earthOrbit = createOrbit(20);
+        const marsOrbit = createOrbit(25);
+        const jupiterOrbit = createOrbit(35);
+        const saturnOrbit = createOrbit(45);
+        const uranusOrbit = createOrbit(55);
+        const neptuneOrbit = createOrbit(65);
+        const asteroidBeltOrbit = createOrbit(30);
+
+        scene.add(mercuryOrbit);
+        scene.add(venusOrbit);
+        scene.add(earthOrbit);
+        scene.add(marsOrbit);
+        scene.add(jupiterOrbit);
+        scene.add(saturnOrbit);
+        scene.add(uranusOrbit);
+        scene.add(neptuneOrbit);
+        scene.add(asteroidBeltOrbit);
+
+        // Create planets
+        const createPlanet = (size, color, distance, name, info) => {
+            const planetGeometry = new THREE.SphereGeometry(size, 32, 32);
+            const planetMaterial = new THREE.MeshBasicMaterial({ color: color });
+            const planet = new THREE.Mesh(planetGeometry, planetMaterial);
+            planet.userData = { distance: distance, name: name, info: info };
+            return planet;
+        };
+
+        const mercury = createPlanet(0.5, 0xaaaaaa, 10, "Mercury", "Mercury is the smallest planet in our solar system.");
+        const venus = createPlanet(1, 0xffa500, 15, "Venus", "Venus is the second planet from the Sun.");
+        const earth = createPlanet(1, 0x0000ff, 20, "Earth", "Earth is the third planet from the Sun and our home.");
+        const mars = createPlanet(0.8, 0xff0000, 25, "Mars", "Mars is the fourth planet from the Sun.");
+        const jupiter = createPlanet(2, 0xffa07a, 35, "Jupiter", "Jupiter is the largest planet in our solar system.");
+        const saturn = createPlanet(1.8, 0xf4a460, 45, "Saturn", "Saturn is known for its prominent ring system.");
+        const uranus = createPlanet(1.5, 0x00ffff, 55, "Uranus", "Uranus is the seventh planet from the Sun.");
+        const neptune = createPlanet(1.5, 0x0000ff, 65, "Neptune", "Neptune is the eighth and farthest planet from the Sun.");
+
+        scene.add(mercury);
+        scene.add(venus);
+        scene.add(earth);
+        scene.add(mars);
+        scene.add(jupiter);
+        scene.add(saturn);
+        scene.add(uranus);
+        scene.add(neptune);
+
+        // Create moons
+        const createMoon = (size, color, distance, planet) => {
+            const moonGeometry = new THREE.SphereGeometry(size, 32, 32);
+            const moonMaterial = new THREE.MeshBasicMaterial({ color: color });
+            const moon = new THREE.Mesh(moonGeometry, moonMaterial);
+            moon.userData.distance = distance;
+            planet.add(moon);
+            return moon;
+        };
+
+        const moon = createMoon(0.2, 0xffffff, 2, earth);
+
+        // Create asteroid belt
+        const createAsteroidBelt = (numAsteroids, innerRadius, outerRadius) => {
+            const asteroids = new THREE.Group();
+            for (let i = 0; i < numAsteroids; i++) {
+                const asteroidGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+                const asteroidMaterial = new THREE.MeshBasicMaterial({ color: 0x808080 });
+                const asteroid = new THREE.Mesh(asteroidGeometry, asteroidMaterial);
+                const angle = Math.random() * 2 * Math.PI;
+                const radius = innerRadius + Math.random() * (outerRadius - innerRadius);
+                asteroid.position.set(radius * Math.cos(angle), 0, radius * Math.sin(angle));
+                asteroids.add(asteroid);
+            }
+            return asteroids;
+        };
+
+        const asteroidBelt = createAsteroidBelt(1000, 30, 35);
+        scene.add(asteroidBelt);
+
+        // Set camera position
+        camera.position.z = 100;
+
+        // Raycaster for detecting clicks
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        const onMouseClick = (event) => {
+            // Calculate mouse position in normalized device coordinates (-1 to +1) for both components
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            // Update the raycaster with the camera and mouse position
+            raycaster.setFromCamera(mouse, camera);
+
+            // Calculate objects intersecting the picking ray
+            const intersects = raycaster.intersectObjects(scene.children, true);
+
+            if (intersects.length > 0) {
+                const intersectedObject = intersects[0].object;
+                if (intersectedObject.userData.name) {
+                    // Zoom into the planet
+                    const targetPosition = intersectedObject.position.clone();
+                    const zoomIn = () => {
+                        const distance = camera.position.distanceTo(targetPosition);
+                        if (distance > 10) {
+                            camera.position.lerp(targetPosition, 0.1);
+                            requestAnimationFrame(zoomIn);
+                        } else {
+                            // Display planet info
+                            const infoDiv = document.getElementById('info');
+                            infoDiv.style.display = 'block';
+                            infoDiv.innerHTML = `<h2>${intersectedObject.userData.name}</h2><p>${intersectedObject.userData.info}</p>`;
+                        }
+                        controls.update();
+                        renderer.render(scene, camera);
+                    };
+                    zoomIn();
+                }
+            }
+        };
+
+        window.addEventListener('click', onMouseClick, false);
+
+        // Animation loop
+        const animate = () => {
+            requestAnimationFrame(animate);
+
+            // Rotate planets around the Sun
+            const time = Date.now() * 0.0001;
+
+            mercury.position.x = mercury.userData.distance * Math.cos(time * 4.15);
+            mercury.position.z = mercury.userData.distance * Math.sin(time * 4.15);
+
+            venus.position.x = venus.userData.distance * Math.cos(time * 1.62);
+            venus.position.z = venus.userData.distance * Math.sin(time * 1.62);
+
+            earth.position.x = earth.userData.distance * Math.cos(time);
+            earth.position.z = earth.userData.distance * Math.sin(time);
+
+            mars.position.x = mars.userData.distance * Math.cos(time * 0.53);
+            mars.position.z = mars.userData.distance * Math.sin(time * 0.53);
+
+            jupiter.position.x = jupiter.userData.distance * Math.cos(time * 0.08);
+            jupiter.position.z = jupiter.userData.distance * Math.sin(time * 0.08);
+
+            saturn.position.x = saturn.userData.distance * Math.cos(time * 0.03);
+            saturn.position.z = saturn.userData.distance * Math.sin(time * 0.03);
+
+            uranus.position.x = uranus.userData.distance * Math.cos(time * 0.01);
+            uranus.position.z = uranus.userData.distance * Math.sin(time * 0.01);
+
+            neptune.position.x = neptune.userData.distance * Math.cos(time * 0.006);
+            neptune.position.z = neptune.userData.distance * Math.sin(time * 0.006);
+
+            moon.position.x = moon.userData.distance * Math.cos(time * 10);
+            moon.position.z = moon.userData.distance * Math.sin(time * 10);
+
+            controls.update();
+            renderer.render(scene, camera);
+        };
+
+        animate();
+    </script>
+</body>
+</html>
