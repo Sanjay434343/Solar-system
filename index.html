@@ -16,13 +16,13 @@
             border-radius: 5px;
             display: none;
         }
-        .return-button {
+        .button {
             position: absolute;
-            bottom: 20px;
-            right: 20px;
+            top: 10px;
+            right: 10px;
+            padding: 10px;
             background: rgba(0, 0, 0, 0.7);
             color: white;
-            padding: 10px 20px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
@@ -31,13 +31,13 @@
 </head>
 <body>
     <div class="info" id="info"></div>
-    <button class="return-button" id="returnButton">Return to Solar System</button>
+    <button class="button" id="returnButton">Return to Solar System</button>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script>
         // Set up the scene, camera, and renderer
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100000000);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000000);
         const renderer = new THREE.WebGLRenderer();
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
@@ -140,31 +140,10 @@
         const asteroidBelt = createAsteroidBelt(1000, 30, 35);
         scene.add(asteroidBelt);
 
-        // Create infinite stars
-        const createStars = (numStars) => {
-            const starsGeometry = new THREE.BufferGeometry();
-            const starsMaterial = new THREE.PointsMaterial({ color: 0xffffff });
-
-            const starVertices = [];
-            for (let i = 0; i < numStars; i++) {
-                const x = (Math.random() - 0.5) * 2000;
-                const y = (Math.random() - 0.5) * 2000;
-                const z = (Math.random() - 0.5) * 2000;
-                starVertices.push(x, y, z);
-            }
-
-            starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
-            const stars = new THREE.Points(starsGeometry, starsMaterial);
-            return stars;
-        };
-
-        const stars = createStars(10000);
-        scene.add(stars);
-
-        // Create spiral galaxies with different colors
-        const createSpiralGalaxy = (numStars, radius, color) => {
+        // Create spiral galaxies
+        const createSpiralGalaxy = (numStars, radius) => {
             const galaxyGeometry = new THREE.BufferGeometry();
-            const galaxyMaterial = new THREE.PointsMaterial({ color: color });
+            const galaxyMaterial = new THREE.PointsMaterial({ color: 0xffffff });
 
             const starVertices = [];
             for (let i = 0; i < numStars; i++) {
@@ -182,25 +161,40 @@
         };
 
         const galaxies = [];
-        const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff];
         for (let i = 0; i < 100; i++) {
-            const color = colors[Math.floor(Math.random() * colors.length)];
-            const galaxy = createSpiralGalaxy(10000, 500, color);
+            const galaxy = createSpiralGalaxy(10000, 500);
             galaxy.position.set(
-                (Math.random() - 0.5) * 100000,
-                (Math.random() - 0.5) * 100000,
-                (Math.random() - 0.5) * 100000
+                (Math.random() - 0.5) * 10000,
+                (Math.random() - 0.5) * 10000,
+                (Math.random() - 0.5) * 10000
             );
             galaxy.visible = false;
             galaxies.push(galaxy);
             scene.add(galaxy);
         }
 
-        // Create our Milky Way galaxy
-        const milkyWay = createSpiralGalaxy(10000, 500, 0xffffff);
-        milkyWay.position.set(0, 0, 0);
-        milkyWay.visible = false;
-        scene.add(milkyWay);
+        // Create stars only inside the Milky Way galaxy
+        const createMilkyWayStars = (numStars, radius) => {
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsMaterial = new THREE.PointsMaterial({ color: 0xffffff });
+
+            const starVertices = [];
+            for (let i = 0; i < numStars; i++) {
+                const angle = Math.random() * 2 * Math.PI;
+                const distance = Math.random() * radius;
+                const x = distance * Math.cos(angle);
+                const y = (Math.random() - 0.5) * 200;
+                const z = distance * Math.sin(angle);
+                starVertices.push(x, y, z);
+            }
+
+            starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+            const stars = new THREE.Points(starsGeometry, starsMaterial);
+            return stars;
+        };
+
+        const milkyWayStars = createMilkyWayStars(10000, 500);
+        scene.add(milkyWayStars);
 
         // Set camera position
         camera.position.z = 100;
@@ -240,31 +234,16 @@
                         renderer.render(scene, camera);
                     };
                     zoomIn();
+                } else if (intersectedObject.geometry.type === 'BufferGeometry') {
+                    // Show "Not Explored" message for other galaxies
+                    const infoDiv = document.getElementById('info');
+                    infoDiv.style.display = 'block';
+                    infoDiv.innerHTML = `<h2>Not Explored</h2><p>This galaxy has not been explored yet.</p>`;
                 }
             }
         };
 
         window.addEventListener('click', onMouseClick, false);
-
-        // Return to Solar System button functionality
-        const returnButton = document.getElementById('returnButton');
-        returnButton.addEventListener('click', () => {
-            const targetPosition = new THREE.Vector3(0, 0, 100);
-            const zoomOut = () => {
-                const distance = camera.position.distanceTo(targetPosition);
-                if (distance > 10) {
-                    camera.position.lerp(targetPosition, 0.1);
-                    requestAnimationFrame(zoomOut);
-                } else {
-                    // Hide planet info
-                    const infoDiv = document.getElementById('info');
-                    infoDiv.style.display = 'none';
-                }
-                controls.update();
-                renderer.render(scene, camera);
-            };
-            zoomOut();
-        });
 
         // Animation loop
         const animate = () => {
@@ -302,20 +281,15 @@
 
             // Show galaxies when zooming out
             if (camera.position.z > 1000) {
-                galaxies.forEach(galaxy => {
-                    galaxy.visible = true;
-                });
-                milkyWay.visible = true;
-                stars.visible = false; // Hide stars when zooming out
+                galaxies.forEach(galaxy => galaxy.visible = true);
+            } else {
+                galaxies.forEach(galaxy => galaxy.visible = false);
             }
 
-            // Hide galaxies when zooming in
-            if (camera.position.z < 1000) {
-                galaxies.forEach(galaxy => {
-                    galaxy.visible = false;
-                });
-                milkyWay.visible = false;
-                stars.visible = true; // Show stars when zooming in
+            // Remove stars one by one while zooming out
+            if (camera.position.z > 500) {
+                milkyWayStars.geometry.attributes.position.array = milkyWayStars.geometry.attributes.position.array.slice(0, -3);
+                milkyWayStars.geometry.attributes.position.needsUpdate = true;
             }
 
             controls.update();
@@ -323,6 +297,36 @@
         };
 
         animate();
+
+        // Function to return to the solar system and switch to aerial view
+        const returnToSolarSystem = () => {
+            const path = [];
+            const targetPosition = new THREE.Vector3(0, 100, 0);
+            const currentPosition = camera.position.clone();
+            const steps = 100;
+            for (let i = 0; i <= steps; i++) {
+                const t = i / steps;
+                const x = currentPosition.x * (1 - t) + targetPosition.x * t;
+                const y = currentPosition.y * (1 - t) + targetPosition.y * t;
+                const z = currentPosition.z * (1 - t) + targetPosition.z * t;
+                path.push(new THREE.Vector3(x, y, z));
+            }
+
+            const travelPath = () => {
+                if (path.length > 0) {
+                    camera.position.copy(path.shift());
+                    requestAnimationFrame(travelPath);
+                } else {
+                    controls.target.set(0, 0, 0);
+                    controls.update();
+                }
+                renderer.render(scene, camera);
+            };
+            travelPath();
+        };
+
+        // Add event listener to the return button
+        document.getElementById('returnButton').addEventListener('click', returnToSolarSystem);
     </script>
 </body>
 </html>
