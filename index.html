@@ -16,16 +16,28 @@
             border-radius: 5px;
             display: none;
         }
+        .return-button {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
     <div class="info" id="info"></div>
+    <button class="return-button" id="returnButton">Return to Solar System</button>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script>
         // Set up the scene, camera, and renderer
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100000000);
         const renderer = new THREE.WebGLRenderer();
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
@@ -99,16 +111,16 @@
         scene.add(neptune);
 
         // Create moons
-        const createMoon = (size, color, distance, planet) => {
+        const createMoon = (size, color, distance, planet, name, info) => {
             const moonGeometry = new THREE.SphereGeometry(size, 32, 32);
             const moonMaterial = new THREE.MeshBasicMaterial({ color: color });
             const moon = new THREE.Mesh(moonGeometry, moonMaterial);
-            moon.userData.distance = distance;
+            moon.userData = { distance: distance, name: name, info: info };
             planet.add(moon);
             return moon;
         };
 
-        const moon = createMoon(0.2, 0xffffff, 2, earth);
+        const moon = createMoon(0.2, 0xffffff, 2, earth, "Moon", "The Moon is Earth's only natural satellite.");
 
         // Create asteroid belt
         const createAsteroidBelt = (numAsteroids, innerRadius, outerRadius) => {
@@ -127,6 +139,68 @@
 
         const asteroidBelt = createAsteroidBelt(1000, 30, 35);
         scene.add(asteroidBelt);
+
+        // Create infinite stars
+        const createStars = (numStars) => {
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsMaterial = new THREE.PointsMaterial({ color: 0xffffff });
+
+            const starVertices = [];
+            for (let i = 0; i < numStars; i++) {
+                const x = (Math.random() - 0.5) * 2000;
+                const y = (Math.random() - 0.5) * 2000;
+                const z = (Math.random() - 0.5) * 2000;
+                starVertices.push(x, y, z);
+            }
+
+            starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+            const stars = new THREE.Points(starsGeometry, starsMaterial);
+            return stars;
+        };
+
+        const stars = createStars(10000);
+        scene.add(stars);
+
+        // Create spiral galaxies with different colors
+        const createSpiralGalaxy = (numStars, radius, color) => {
+            const galaxyGeometry = new THREE.BufferGeometry();
+            const galaxyMaterial = new THREE.PointsMaterial({ color: color });
+
+            const starVertices = [];
+            for (let i = 0; i < numStars; i++) {
+                const angle = i * 0.1;
+                const distance = radius * Math.sqrt(i / numStars);
+                const x = distance * Math.cos(angle);
+                const y = (Math.random() - 0.5) * 200;
+                const z = distance * Math.sin(angle);
+                starVertices.push(x, y, z);
+            }
+
+            galaxyGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+            const galaxy = new THREE.Points(galaxyGeometry, galaxyMaterial);
+            return galaxy;
+        };
+
+        const galaxies = [];
+        const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff];
+        for (let i = 0; i < 100; i++) {
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            const galaxy = createSpiralGalaxy(10000, 500, color);
+            galaxy.position.set(
+                (Math.random() - 0.5) * 100000,
+                (Math.random() - 0.5) * 100000,
+                (Math.random() - 0.5) * 100000
+            );
+            galaxy.visible = false;
+            galaxies.push(galaxy);
+            scene.add(galaxy);
+        }
+
+        // Create our Milky Way galaxy
+        const milkyWay = createSpiralGalaxy(10000, 500, 0xffffff);
+        milkyWay.position.set(0, 0, 0);
+        milkyWay.visible = false;
+        scene.add(milkyWay);
 
         // Set camera position
         camera.position.z = 100;
@@ -172,6 +246,26 @@
 
         window.addEventListener('click', onMouseClick, false);
 
+        // Return to Solar System button functionality
+        const returnButton = document.getElementById('returnButton');
+        returnButton.addEventListener('click', () => {
+            const targetPosition = new THREE.Vector3(0, 0, 100);
+            const zoomOut = () => {
+                const distance = camera.position.distanceTo(targetPosition);
+                if (distance > 10) {
+                    camera.position.lerp(targetPosition, 0.1);
+                    requestAnimationFrame(zoomOut);
+                } else {
+                    // Hide planet info
+                    const infoDiv = document.getElementById('info');
+                    infoDiv.style.display = 'none';
+                }
+                controls.update();
+                renderer.render(scene, camera);
+            };
+            zoomOut();
+        });
+
         // Animation loop
         const animate = () => {
             requestAnimationFrame(animate);
@@ -205,6 +299,24 @@
 
             moon.position.x = moon.userData.distance * Math.cos(time * 10);
             moon.position.z = moon.userData.distance * Math.sin(time * 10);
+
+            // Show galaxies when zooming out
+            if (camera.position.z > 1000) {
+                galaxies.forEach(galaxy => {
+                    galaxy.visible = true;
+                });
+                milkyWay.visible = true;
+                stars.visible = false; // Hide stars when zooming out
+            }
+
+            // Hide galaxies when zooming in
+            if (camera.position.z < 1000) {
+                galaxies.forEach(galaxy => {
+                    galaxy.visible = false;
+                });
+                milkyWay.visible = false;
+                stars.visible = true; // Show stars when zooming in
+            }
 
             controls.update();
             renderer.render(scene, camera);
